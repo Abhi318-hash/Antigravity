@@ -1,11 +1,11 @@
-import db from '@/lib/db';
+import { getClinics } from '@/lib/actions';
 import Link from 'next/link';
 import { Users, LayoutDashboard, Settings } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const clinics = db.prepare('SELECT * FROM clinics ORDER BY created_at ASC').all() as any[];
+  const clinics = await getClinics();
 
   return (
     <main className="container fade-in">

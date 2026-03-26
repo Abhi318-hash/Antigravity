@@ -1,20 +1,30 @@
-import Database from 'better-sqlite3';
-import { join } from 'path';
+import { createClient } from "@libsql/client";
 
-// Store DB in the root of the project for persistence
-const dbPath = join(process.cwd(), 'clinic.db');
-const db = new Database(dbPath);
+// For production, use Turso. For local dev, you can still use a local file.
+const url = process.env.TURSO_URL || "file:clinic.db";
+const authToken = process.env.TURSO_TOKEN;
 
-// Initialize schema
-db.exec(`
-  CREATE TABLE IF NOT EXISTS clinics (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    patient_count INTEGER DEFAULT 0,
-    recipient_secret TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+// Initialize the client
+const db = createClient({
+  url: url,
+  authToken: authToken,
+});
+
+// Initialize schema (this might run multiple times, ideally use a migration tool like Drizzle)
+async function initDb() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS clinics (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      patient_count INTEGER DEFAULT 0,
+      recipient_secret TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+// Ensure the table exists
+initDb();
 
 export default db;
 

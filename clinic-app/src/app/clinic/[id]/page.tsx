@@ -1,12 +1,13 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getClinic, incrementPatient, decrementPatient } from '@/lib/actions';
 import { Plus, Minus, Check, AlertCircle, Home } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ClinicRecipientPage({ params }: { params: { id: string } }) {
+export default function ClinicRecipientPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const searchParams = useSearchParams();
   const [clinic, setClinic] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,7 @@ export default function ClinicRecipientPage({ params }: { params: { id: string }
     
     setLoading(true);
     try {
-      const data = await getClinic(params.id);
+      const data = await getClinic(id);
       if (!data) {
         setError("Clinic not found.");
       } else if (data.recipient_secret !== secret) {
@@ -46,10 +47,10 @@ export default function ClinicRecipientPage({ params }: { params: { id: string }
     if (!clinic || !secret) return;
     try {
       if (type === 'inc') {
-        await incrementPatient(params.id, secret);
+        await incrementPatient(id, secret);
         setClinic({ ...clinic, patient_count: clinic.patient_count + 1 });
       } else {
-        await decrementPatient(params.id, secret);
+        await decrementPatient(id, secret);
         setClinic({ ...clinic, patient_count: Math.max(0, clinic.patient_count - 1) });
       }
     } catch (err) {
