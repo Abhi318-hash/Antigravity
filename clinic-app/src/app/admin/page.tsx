@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { addClinic, deleteClinic, getClinics } from '@/lib/actions';
-import { Trash2, Plus, Key, Copy, CheckCircle } from 'lucide-react';
+import { addClinic, deleteClinic, getClinics, verifyAdminPassword } from '@/lib/actions';
+import { Trash2, Plus, Key, Copy, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function AdminPage() {
   const [clinics, setClinics] = useState<any[]>([]);
@@ -10,6 +10,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [newClinicName, setNewClinicName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,13 +24,20 @@ export default function AdminPage() {
     setClinics(data);
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simplified login for demo
-    if (password === 'admin123') {
-      setIsAdmin(true);
-    } else {
-      alert("Incorrect admin password.");
+    setLoginLoading(true);
+    try {
+      const isValid = await verifyAdminPassword(password);
+      if (isValid) {
+        setIsAdmin(true);
+      } else {
+        alert("Incorrect admin password.");
+      }
+    } catch (err) {
+      alert("Verification error.");
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -73,11 +81,14 @@ export default function AdminPage() {
               placeholder="Enter Admin Password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loginLoading}
             />
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Login</button>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loginLoading}>
+              {loginLoading ? <Loader2 className="animate-spin" size={18} /> : 'Login'}
+            </button>
           </form>
           <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>
-            Default for demo: <code>admin123</code>
+            {process.env.NODE_ENV === 'development' ? 'Default for demo: admin123' : 'Use your Vercel ADMIN_PASSWORD secret'}
           </p>
         </div>
       </div>

@@ -24,7 +24,7 @@ export default async function Home() {
             <p style={{ color: 'var(--text-secondary)' }}>No clinics registered yet. Set up one in Admin panel.</p>
           </div>
         ) : (
-          clinics.map((clinic) => (
+          clinics.map((clinic: any) => (
             <div key={clinic.id} className="glass-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem' }}>{clinic.name}</h2>

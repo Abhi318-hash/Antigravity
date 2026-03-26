@@ -5,6 +5,11 @@ import db from './db';
 import { randomUUID } from 'crypto';
 
 // Admin operations
+export async function verifyAdminPassword(password: string) {
+  const secret = process.env.ADMIN_PASSWORD || 'admin123';
+  return password === secret;
+}
+
 export async function addClinic(name: string, secret: string) {
   if (!name || !secret) throw new Error("Missing data");
   
@@ -66,7 +71,8 @@ export async function decrementPatient(id: string, secret: string) {
 // Queries
 export async function getClinics() {
   const result = await db.execute('SELECT * FROM clinics ORDER BY created_at DESC');
-  return result.rows as any[];
+  // Ensure we return ONLY plain objects (this fixes the serialization error)
+  return JSON.parse(JSON.stringify(result.rows));
 }
 
 export async function getClinic(id: string) {
@@ -74,5 +80,6 @@ export async function getClinic(id: string) {
     sql: 'SELECT * FROM clinics WHERE id = ?',
     args: [id]
   });
-  return result.rows[0] as any;
+  // Ensure we return ONLY plain objects (this fixes the serialization error)
+  return result.rows[0] ? JSON.parse(JSON.stringify(result.rows[0])) : null;
 }
