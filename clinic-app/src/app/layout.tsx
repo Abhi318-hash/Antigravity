@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Live Clinic Queue Management",
-  description: "Real-time patient count monitoring and management system.",
+  title: "Q-PULSE | Skip the wait, stay in the pulse",
+  description: "Real-time patient pulse monitoring and management system. Skip the wait, stay in the pulse.",
 };
 
 export default function RootLayout({

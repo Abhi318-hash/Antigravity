@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local database (use Turso in production)
+clinic.db
+
+# local debug/check scripts
+debug_db.js
+check_schema.js
+check_turso.js
+check_turso.ts
+seed.ts
+seed.js

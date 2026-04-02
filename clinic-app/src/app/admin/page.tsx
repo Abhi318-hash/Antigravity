@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { addClinic, deleteClinic, getClinics, verifyAdminPassword } from '@/lib/actions';
-import { Trash2, Plus, Key, Copy, CheckCircle, Loader2 } from 'lucide-react';
+import { addClinic, hideClinic, unhideClinic, getClinicsAdmin, verifyAdminPassword } from '@/lib/actions';
+import { EyeOff, Eye, Plus, Copy, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function AdminPage() {
   const [clinics, setClinics] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [password, setPassword] = useState('');
   const [newClinicName, setNewClinicName] = useState('');
+  const [newDoctorName, setNewDoctorName] = useState('');
+  const [newLocation, setNewLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -20,7 +23,7 @@ export default function AdminPage() {
   }, [isAdmin]);
 
   const loadClinics = async () => {
-    const data = await getClinics();
+    const data = await getClinicsAdmin();
     setClinics(data);
   };
 
@@ -32,10 +35,10 @@ export default function AdminPage() {
       if (isValid) {
         setIsAdmin(true);
       } else {
-        alert("Incorrect admin password.");
+        alert('Incorrect admin password.');
       }
-    } catch (err) {
-      alert("Verification error.");
+    } catch {
+      alert('Verification error.');
     } finally {
       setLoginLoading(false);
     }
@@ -46,8 +49,10 @@ export default function AdminPage() {
     if (!newClinicName) return;
     setLoading(true);
     try {
-      await addClinic(newClinicName, 'dummy_secret');
+      await addClinic(newClinicName, newDoctorName, newLocation);
       setNewClinicName('');
+      setNewDoctorName('');
+      setNewLocation('');
       await loadClinics();
     } catch (err) {
       console.error(err);
@@ -56,10 +61,21 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure? This will remove all patient data.")) return;
-    await deleteClinic(id);
-    await loadClinics();
+  const handleToggleVisibility = async (clinic: any) => {
+    setTogglingId(clinic.id);
+    try {
+      if (clinic.is_hidden) {
+        await unhideClinic(clinic.id);
+      } else {
+        await hideClinic(clinic.id);
+      }
+      await loadClinics();
+    } catch (err) {
+      console.error('Toggle visibility failed:', err);
+      alert('Failed to update clinic visibility. Please try again.');
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const copyLink = (id: string, secret: string) => {
@@ -73,12 +89,14 @@ export default function AdminPage() {
     return (
       <div className="container" style={{ display: 'grid', placeItems: 'center', minHeight: '80vh' }}>
         <div className="glass-card" style={{ width: '100%', maxWidth: '400px' }}>
-          <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Admin Access</h1>
+          <h1 style={{ marginBottom: '1.5rem', textAlign: 'center', background: 'linear-gradient(to right, #ffffff, #888)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Q-PULSE Admin
+          </h1>
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <input 
-              type="password" 
-              className="input-field" 
-              placeholder="Enter Admin Password" 
+            <input
+              type="password"
+              className="input-field"
+              placeholder="Enter Admin Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loginLoading}
@@ -88,69 +106,184 @@ export default function AdminPage() {
             </button>
           </form>
           <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center' }}>
-            {process.env.NODE_ENV === 'development' ? 'Default for demo: admin123' : 'Use your Vercel ADMIN_PASSWORD secret'}
+            Contact your system administrator for access.
           </p>
         </div>
       </div>
     );
   }
 
+  const visibleClinics = clinics.filter(c => !c.is_hidden);
+  const hiddenClinics = clinics.filter(c => c.is_hidden);
+
   return (
     <div className="container fade-in">
       <header className="header" style={{ textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1>Admin Dashboard</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Manage all clinics and patient access codes.</p>
+          <h1 style={{ background: 'linear-gradient(to right, #00d2ff, #ffffff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Q-PULSE Dashboard
+          </h1>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            {visibleClinics.length} active · {hiddenClinics.length} hidden
+          </p>
         </div>
-        <button onClick={() => window.location.href = '/'} className="btn btn-outline">Exit</button>
+        <button type="button" onClick={() => window.location.href = '/'} className="btn btn-outline">Exit</button>
       </header>
 
+      {/* Add New Clinic */}
       <div className="glass-card" style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginBottom: '1rem' }}>Add New Clinic</h2>
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: '1rem' }}>
-          <input 
-            className="input-field" 
-            placeholder="Clinic Name (e.g. Westside Care)" 
-            value={newClinicName}
-            onChange={(e) => setNewClinicName(e.target.value)}
-            disabled={loading}
-          />
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            <Plus size={18} /> Add
+        <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <input
+              className="input-field"
+              placeholder="Clinic Name (e.g. Westside Care)"
+              value={newClinicName}
+              onChange={(e) => setNewClinicName(e.target.value)}
+              disabled={loading}
+            />
+            <input
+              className="input-field"
+              placeholder="Doctor Name (e.g. Dr. Smith)"
+              value={newDoctorName}
+              onChange={(e) => setNewDoctorName(e.target.value)}
+              disabled={loading}
+            />
+            <input
+              className="input-field"
+              placeholder="Location (e.g. Downtown)"
+              value={newLocation}
+              onChange={(e) => setNewLocation(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ width: 'fit-content' }} disabled={loading}>
+            <Plus size={18} /> Register Clinic
           </button>
         </form>
       </div>
 
-      <div className="grid-clinics">
-        {clinics.map(clinic => (
-          <div key={clinic.id} className="glass-card" style={{ position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h3 style={{ fontSize: '1.3rem' }}>{clinic.name}</h3>
-              <button 
-                onClick={() => handleDelete(clinic.id)} 
-                style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
-              >
-                <Trash2 size={20} />
-              </button>
-            </div>
-            
-            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ fontSize: '0.85rem', padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px dashed var(--glass-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                  <span>Recipient Secret:</span>
-                  <code style={{ color: 'var(--accent-primary)' }}>{clinic.recipient_secret}</code>
-                </div>
-                <button 
-                  onClick={() => copyLink(clinic.id, clinic.recipient_secret)} 
-                  className="btn btn-outline" 
-                  style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem' }}
-                >
-                  {copiedId === clinic.id ? <><CheckCircle size={14} /> Link Copied</> : <><Copy size={14} /> Access Link</>}
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Active Clinics */}
+      <h2 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        Active Clinics
+      </h2>
+      <div className="grid-clinics" style={{ marginBottom: '2.5rem' }}>
+        {visibleClinics.length === 0 && (
+          <p style={{ color: 'var(--text-secondary)', gridColumn: '1/-1' }}>No active clinics.</p>
+        )}
+        {visibleClinics.map(clinic => (
+          <ClinicCard
+            key={clinic.id}
+            clinic={clinic}
+            copiedId={copiedId}
+            togglingId={togglingId}
+            onCopyLink={copyLink}
+            onToggle={handleToggleVisibility}
+          />
         ))}
+      </div>
+
+      {/* Hidden Clinics */}
+      {hiddenClinics.length > 0 && (
+        <>
+          <h2 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Hidden from Users
+          </h2>
+          <div className="grid-clinics">
+            {hiddenClinics.map(clinic => (
+              <ClinicCard
+                key={clinic.id}
+                clinic={clinic}
+                copiedId={copiedId}
+                togglingId={togglingId}
+                onCopyLink={copyLink}
+                onToggle={handleToggleVisibility}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ClinicCard({ clinic, copiedId, togglingId, onCopyLink, onToggle }: any) {
+  const isHidden = !!clinic.is_hidden;
+  const isToggling = togglingId === clinic.id;
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        padding: '1.5rem',
+        opacity: isHidden ? 0.55 : 1,
+        border: isHidden ? '1px solid rgba(255,255,255,0.06)' : undefined,
+        transition: 'opacity 0.3s ease'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{clinic.name}</h3>
+            {isHidden && (
+              <span style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '20px',
+                background: 'rgba(255,255,255,0.08)',
+                color: 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Hidden
+              </span>
+            )}
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0 }}>
+            {clinic.doctor_name} · {clinic.location}
+          </p>
+        </div>
+
+        {/* Hide / Show toggle button */}
+        <button
+          type="button"
+          onClick={() => onToggle(clinic)}
+          disabled={isToggling}
+          className="btn"
+          style={{
+            background: isHidden ? 'rgba(0,210,255,0.1)' : 'rgba(255,255,255,0.06)',
+            color: isHidden ? 'var(--accent-primary)' : 'var(--text-secondary)',
+            padding: '0.4rem',
+            minWidth: 'auto',
+            border: '1px solid ' + (isHidden ? 'rgba(0,210,255,0.2)' : 'rgba(255,255,255,0.08)'),
+            transition: 'all 0.2s ease'
+          }}
+          title={isHidden ? 'Show to users' : 'Hide from users'}
+        >
+          {isToggling
+            ? <Loader2 size={15} className="animate-spin" />
+            : isHidden
+              ? <Eye size={15} />
+              : <EyeOff size={15} />
+          }
+        </button>
+      </div>
+
+      {/* Access link */}
+      <div style={{ fontSize: '0.78rem', padding: '0.7rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px dashed var(--glass-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+          <span>Recipient Secret:</span>
+          <code style={{ color: 'var(--accent-primary)', fontSize: '0.75rem' }}>{clinic.recipient_secret}</code>
+        </div>
+        <button
+          type="button"
+          onClick={() => onCopyLink(clinic.id, clinic.recipient_secret)}
+          className="btn btn-outline"
+          style={{ width: '100%', fontSize: '0.72rem', padding: '0.4rem', minHeight: 'auto' }}
+        >
+          {copiedId === clinic.id ? <><CheckCircle size={12} /> Link Copied</> : <><Copy size={12} /> Access Link</>}
+        </button>
       </div>
     </div>
   );
