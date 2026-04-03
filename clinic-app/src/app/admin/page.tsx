@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { addClinic, hideClinic, unhideClinic, getClinicsAdmin, verifyAdminPassword } from '@/lib/actions';
-import { EyeOff, Eye, Plus, Copy, CheckCircle, Loader2 } from 'lucide-react';
+import { EyeOff, Eye, Plus, Copy, CheckCircle, Loader2, QrCode, User, ShieldCheck, Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function AdminPage() {
   const [clinics, setClinics] = useState<any[]>([]);
@@ -210,6 +211,10 @@ export default function AdminPage() {
 function ClinicCard({ clinic, copiedId, togglingId, onCopyLink, onToggle }: any) {
   const isHidden = !!clinic.is_hidden;
   const isToggling = togglingId === clinic.id;
+  const [showQR, setShowQR] = useState(false);
+
+  const patientUrl = typeof window !== 'undefined' ? `${window.location.origin}/?addFavorite=${clinic.id}` : '';
+  const staffUrl = typeof window !== 'undefined' ? `${window.location.origin}/clinic/${clinic.id}?secret=${clinic.recipient_secret}` : '';
 
   return (
     <div
@@ -218,10 +223,13 @@ function ClinicCard({ clinic, copiedId, togglingId, onCopyLink, onToggle }: any)
         padding: '1.5rem',
         opacity: isHidden ? 0.55 : 1,
         border: isHidden ? '1px solid rgba(255,255,255,0.06)' : undefined,
-        transition: 'opacity 0.3s ease'
+        transition: 'all 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{clinic.name}</h3>
@@ -245,30 +253,73 @@ function ClinicCard({ clinic, copiedId, togglingId, onCopyLink, onToggle }: any)
           </p>
         </div>
 
-        {/* Hide / Show toggle button */}
-        <button
-          type="button"
-          onClick={() => onToggle(clinic)}
-          disabled={isToggling}
-          className="btn"
-          style={{
-            background: isHidden ? 'rgba(0,210,255,0.1)' : 'rgba(255,255,255,0.06)',
-            color: isHidden ? 'var(--accent-primary)' : 'var(--text-secondary)',
-            padding: '0.4rem',
-            minWidth: 'auto',
-            border: '1px solid ' + (isHidden ? 'rgba(0,210,255,0.2)' : 'rgba(255,255,255,0.08)'),
-            transition: 'all 0.2s ease'
-          }}
-          title={isHidden ? 'Show to users' : 'Hide from users'}
-        >
-          {isToggling
-            ? <Loader2 size={15} className="animate-spin" />
-            : isHidden
-              ? <Eye size={15} />
-              : <EyeOff size={15} />
-          }
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setShowQR(!showQR)}
+            className="btn"
+            style={{
+              background: showQR ? 'rgba(0,210,255,0.1)' : 'rgba(255,255,255,0.06)',
+              color: showQR ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              padding: '0.4rem',
+              minWidth: 'auto',
+              border: '1px solid ' + (showQR ? 'rgba(0,210,255,0.2)' : 'rgba(255,255,255,0.08)'),
+            }}
+            title="Show QR Codes"
+          >
+            <QrCode size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggle(clinic)}
+            disabled={isToggling}
+            className="btn"
+            style={{
+              background: isHidden ? 'rgba(0,210,255,0.1)' : 'rgba(255,255,255,0.06)',
+              color: isHidden ? 'var(--accent-primary)' : 'var(--text-secondary)',
+              padding: '0.4rem',
+              minWidth: 'auto',
+              border: '1px solid ' + (isHidden ? 'rgba(0,210,255,0.2)' : 'rgba(255,255,255,0.08)'),
+            }}
+            title={isHidden ? 'Show to users' : 'Hide from users'}
+          >
+            {isToggling
+              ? <Loader2 size={15} className="animate-spin" />
+              : isHidden
+                ? <Eye size={15} />
+                : <EyeOff size={15} />
+            }
+          </button>
+        </div>
       </div>
+
+      {showQR && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--glass-border)', animation: 'slideDown 0.3s ease-out' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+              <User size={10} /> Patient QR
+            </p>
+            <div style={{ background: 'white', padding: '0.5rem', borderRadius: '8px', display: 'inline-block' }}>
+              <QRCodeSVG value={patientUrl} size={80} />
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+              <ShieldCheck size={10} /> Staff QR
+            </p>
+            <div style={{ background: 'white', padding: '0.5rem', borderRadius: '8px', display: 'inline-block' }}>
+              <QRCodeSVG value={staffUrl} size={80} />
+            </div>
+          </div>
+          <button 
+            onClick={() => window.print()} 
+            className="btn btn-outline" 
+            style={{ gridColumn: '1 / -1', fontSize: '0.7rem', padding: '0.3rem', minHeight: 'auto', marginTop: '0.5rem' }}
+          >
+            <Printer size={12} /> Print Tags
+          </button>
+        </div>
+      )}
 
       {/* Access link */}
       <div style={{ fontSize: '0.78rem', padding: '0.7rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px dashed var(--glass-border)' }}>
